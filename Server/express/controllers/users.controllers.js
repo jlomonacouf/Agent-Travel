@@ -1,10 +1,9 @@
-var passport = require('passport');
-
 var User = require('../models/user.model');
 var EmailCode = require('../models/emailcode.model');
 var sgMail = require('@sendgrid/mail');
 var config = require('../config/config')
 var mysql = require('mysql')
+var randomatic = require('randomatic')
 
 const con = mysql.createConnection({
     host: config.rdsDB.host,
@@ -36,7 +35,15 @@ function sendVerificationEmail(codeData)
 
 exports.signup = function(req, res)
 {
-    var user = { username: req.body.username, email: req.body.email, email_verified: 0, password: req.body.password, password_salt: '123', created_at: '1/2/1999' };
+    var user = { 
+        username: req.body.username, 
+        email: req.body.email, 
+        email_verified: 0, 
+        password: req.body.password, 
+        password_salt: req.body.password_salt, 
+        created_at: new Date() 
+    };
+
     if(req.body.firstname !== undefined)
         user.firstname = req.body.firstname;
     if(req.body.lastname !== undefined)
@@ -46,31 +53,50 @@ exports.signup = function(req, res)
         if(err) throw err;
 
         console.log('Last insert ID:', res.insertId);
-    });
 
-    /*User.register(new User({username: req.body.username, email: req.body.email, email_verified : false}), req.body.password)
-    .then((user) =>
-    {
-        var randomatic = require('randomatic')
-        var codeData = {
-            "username": user.username,
-            "email": user.email,
-            "code" : randomatic('Aa0', 10)
+        //Generate random code for user
+        var emailCode = {
+            username: user.username,
+            email: user.email,
+            code: randomatic('Aa0', 10),
+            created_at: new Date() 
         }
 
         sendVerificationEmail(codeData)
 
-        var code = new EmailCode(codeData)
-        return code.save()
-    })
-    .then(() =>
+        //Generate and insert email code into database whenever a new user is generated
+        con.query('INSERT INTO EmailCode SET ?', emailCode, (err, res) => {
+            if(err) throw err;
+        });
+    });
+};
+
+exports.login = function(req,res) {
+    var username = req.body.username;
+    var password = req.body.password;
+
+    if (username && password) 
     {
-        goodRequest(res)
-    })
-    .catch((err) => {
-        console.log('Error during user registration!', err);
-        res.json({message: err})
-    });*/
+        con.query('SELECT * FROM Users WHERE username = ? AND password = ?', [username, password], function(error, results, fields) 
+        {
+            if (results.length > 0) 
+            {
+				req.session.loggedin = true;
+                req.session.username = username;
+                res.send('Successful login');
+            } 
+            else 
+            {
+				res.send('Incorrect Username and/or Password!');
+			}			
+			res.end();
+		});
+    } 
+    else 
+    {
+		res.send('Please enter Username and Password!');
+		res.end();
+	}
 };
 
 exports.verifyEmail = (req, res) =>

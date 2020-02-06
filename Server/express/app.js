@@ -4,8 +4,8 @@ var path = require('path');
 var cookieParser = require('cookie-parser');
 var mongoose = require('mongoose');
 var logger = require('morgan');
-var passport = require('passport');
 var session = require('express-session');
+var bodyParser = require('body-parser');
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users.routes');
@@ -21,16 +21,13 @@ mongoose.set('useFindAndModify', false);
 
 var app = express();
 
-app.use(session({secret:'ntk7',
-                     resave: true,
-                     saveUninitialized: true}));
-app.use(passport.initialize());
-app.use(passport.session());
-
-passport.use(User.createStrategy());
-
-passport.serializeUser(User.serializeUser());
-passport.deserializeUser(User.deserializeUser());
+app.use(session({
+	secret: 'secret',
+	resave: true,
+	saveUninitialized: true
+}));
+app.use(bodyParser.urlencoded({extended : true}));
+app.use(bodyParser.json());
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));

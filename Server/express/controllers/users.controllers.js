@@ -1,29 +1,29 @@
-var User = require('../models/user.model');
-var EmailCode = require('../models/emailcode.model');
 var sgMail = require('@sendgrid/mail');
-var config = require('../config/config')
-var mysql = require('mysql')
-var randomatic = require('randomatic')
+var config = require('../config/config');
+var mysql = require('mysql');
+var randomatic = require('randomatic');
+
+var s3Upload = require("./upload.controllers");
 
 const con = mysql.createConnection({
     host: config.rdsDB.host,
     user: config.rdsDB.username,
     password: config.rdsDB.password,
-    database: 'AgentTravel'
-  });
+    database: config.rdsDB.dbName
+});
   
-  con.connect((err) => {
+con.connect((err) => {
     if(err){
       console.log('Error connecting to Db');
       return;
     }
     console.log('Connection established');
-  });
+});
 
 //TO DO: Make verification email look good
 function sendVerificationEmail(codeData)
 {
-    sgMail.setApiKey(process.env.SEND_GRID_API || require('../config/config').sendGrid.key);
+    sgMail.setApiKey(process.env.SEND_GRID_API || config.sendGrid.key);
     const msg = {
         to: codeData.email,
         from: 'noreply@agent-travel.com',
@@ -52,23 +52,23 @@ exports.signup = function(req, res)
     con.query('INSERT INTO Users SET ?', user, (err, res) => {
         if(err) throw err;
 
-        console.log('Last insert ID:', res.insertId);
-
         //Generate random code for user
         var emailCode = {
             username: user.username,
             email: user.email,
             code: randomatic('Aa0', 10),
             created_at: new Date() 
-        }
-
-        sendVerificationEmail(codeData)
+        };
 
         //Generate and insert email code into database whenever a new user is generated
         con.query('INSERT INTO EmailCode SET ?', emailCode, (err, res) => {
             if(err) throw err;
         });
+
+        sendVerificationEmail(codeData);
     });
+
+    return res.json({success: true, message: "Account created successfully"})
 };
 
 exports.login = function(req,res) {
@@ -83,63 +83,102 @@ exports.login = function(req,res) {
             {
 				req.session.loggedin = true;
                 req.session.username = username;
-                res.send('Successful login');
+                return res.json({success: true, message: "Successful login"})
             } 
             else 
             {
-				res.send('Incorrect Username and/or Password!');
+				return res.json({success: false, message: "Incorrect username or password"})
 			}			
 			res.end();
 		});
     } 
     else 
     {
-		res.send('Please enter Username and Password!');
-		res.end();
+        return res.json({success: false, message: "Username or password not provided"})
 	}
 };
 
+function updateEmailVerification(code, username) //Returns true if it was able to properly update database
+{
+    console.log("Beginning transaction for user " + username);
+    con.beginTransaction(function(err) 
+    {
+        if (err) { return false; }
+
+        console.log("Updating user to be verified");
+        con.query('UPDATE Users SET email_verified = 1 WHERE username = ?', [username], function(err, result) {
+            if (err) { 
+              con.rollback(function() {
+                return false;
+              });
+            };
+        });
+
+        console.log("Deleting code from database");
+        con.query('DELETE FROM EmailCode WHERE username = ? AND code = ?', [username, code], function(err, result) {
+            if (err) { 
+              con.rollback(function() {
+                return false;
+              });
+            };
+        });
+    });
+
+    con.commit();
+
+    return true;
+}
+
 exports.verifyEmail = (req, res) =>
 {
-    EmailCode.findOne({code: req.body.code, username: req.body.username})
-    .then((code) =>
+    if(!req.session.loggedin)
+        return res.json({success: false, message: "Not authorized"})
+
+   var code = req.body.code;
+   var username = req.session.username;
+
+    if (username && code) 
     {
-        if (code == null)
-            return errorRequest(res, "MissingCode", "The requested code does not exist for this user.")
-
-        User.findOne({username: code.username})
-        .then((user) =>
+        con.query('SELECT * FROM EmailCode WHERE username = ? AND code = ?', [username, code], function(error, results, fields) 
         {
-            if (user == null)
-                return errorRequest(res, "MissingUser", "The user attached to the code no longer exists.")
-
-            return User.update({"username": user.username},
+            if (results.length > 0) 
             {
-                "email": code.email,
-                "email_verified" : true
-            })
-        })
-        .then(() =>
-        {
-            return code.remove()
-        })
-        .then(() =>
-        {
-            return goodRequest(res)
-        })
-
-    })
+                if(updateEmailVerification(code, username) === true)
+                {
+                    console.log('success');
+                    return res.json({success: true, message: "Successful verification"})
+                }
+            }
+            else
+            {
+                return res.json({success: false, message: "Code not found for given username"})
+            }
+		});
+    }
+    else 
+    {
+        return res.json({success: false, message: "Username or code not provided"})
+    }
 };
 
-function goodRequest(res)
+exports.createItinerary = (req, res) =>
 {
-    return res.json({
-        message: {"name": "success"},
-        user: res.user
-    })
-};
+    if(!req.session.loggedin)
+        return res.json({success: false, message: "Not authorized"})
 
-function errorRequest(res, type, message)
+    //con.query()
+}
+
+exports.uploadFile = (req, res) =>
 {
-    return res.json({"message": {"name": type, "message": message}})
-};
+    if(!req.session.loggedin)
+        return res.json({success: false, message: "Not authorized"})
+
+    var params = {
+        fileName: req.body.fileName,
+        username: req.session.username
+    };
+
+    s3Upload.generatedUploadURL(params)
+    
+}

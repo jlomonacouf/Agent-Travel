@@ -9,7 +9,6 @@ var bodyParser = require('body-parser');
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users.routes');
-var User = require('./models/user.model')
 
 //Connect to MongoDB
 mongoose.connect(process.env.DB_URI || require('./config/config').db.uri, {

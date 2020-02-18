@@ -35,6 +35,10 @@ function sendVerificationEmail(codeData)
 
 exports.signup = function(req, res)
 {
+    //Error Handling:
+    if(req.body.username.length > 30 || req.body.username.match("/^[0-9a-zA-Z]+$/") === true || req.body.firstname.length > 20 || req.body.lastname.length > 30 || req.body.email.length > 45)
+        return res.json({success: false, message: "Bad input"});
+
     var user = { 
         username: req.body.username, 
         email: req.body.email, 
@@ -67,7 +71,7 @@ exports.signup = function(req, res)
                 return res.json({success: false, message: "Failed to create email verification"})
         });
 
-        sendVerificationEmail(codeData);
+        sendVerificationEmail(emailCode);
     });
 
     return res.json({success: true, message: "Account created successfully"})
@@ -187,8 +191,6 @@ exports.createItinerary = (req, res) =>
     })
 
     con.commit();
-
-    //con.query()
 }
 
 exports.deleteItinerary = (req, res) =>

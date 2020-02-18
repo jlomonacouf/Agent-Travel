@@ -49,12 +49,13 @@ exports.signup = function(req, res)
     if(req.body.lastname !== undefined)
         user.lastname = req.body.lastname;
 
-    con.query('INSERT INTO Users SET ?', user, (err, res) => {
-        if(err) throw err;
+    con.query('INSERT INTO Users SET ?', user, (err, results) => {
+        if(err) 
+            return res.json({success: false, message: "Sign up failed"});
 
         //Generate random code for user
         var emailCode = {
-            username: user.username,
+            user_id: results.insertId,
             email: user.email,
             code: randomatic('Aa0', 10),
             created_at: new Date() 
@@ -62,7 +63,8 @@ exports.signup = function(req, res)
 
         //Generate and insert email code into database whenever a new user is generated
         con.query('INSERT INTO EmailCode SET ?', emailCode, (err, res) => {
-            if(err) throw err;
+            if(err)
+                return res.json({success: false, message: "Failed to create email verification"})
         });
 
         sendVerificationEmail(codeData);
@@ -83,13 +85,13 @@ exports.login = function(req,res) {
             {
 				req.session.loggedin = true;
                 req.session.username = username;
+                req.session.userid = results[0].id;
                 return res.json({success: true, message: "Successful login"})
             } 
             else 
             {
 				return res.json({success: false, message: "Incorrect username or password"})
 			}			
-			res.end();
 		});
     } 
     else 
@@ -98,15 +100,15 @@ exports.login = function(req,res) {
 	}
 };
 
-function updateEmailVerification(code, username) //Returns true if it was able to properly update database
+function updateEmailVerification(code, userid) //Returns true if it was able to properly update database
 {
-    console.log("Beginning transaction for user " + username);
+    console.log("Beginning transaction for user " + userid);
     con.beginTransaction(function(err) 
     {
         if (err) { return false; }
 
         console.log("Updating user to be verified");
-        con.query('UPDATE Users SET email_verified = 1 WHERE username = ?', [username], function(err, result) {
+        con.query('UPDATE Users SET email_verified = 1 WHERE id = ?', [userid], function(err, result) {
             if (err) { 
               con.rollback(function() {
                 return false;
@@ -115,7 +117,7 @@ function updateEmailVerification(code, username) //Returns true if it was able t
         });
 
         console.log("Deleting code from database");
-        con.query('DELETE FROM EmailCode WHERE username = ? AND code = ?', [username, code], function(err, result) {
+        con.query('DELETE FROM EmailCode WHERE user_id = ? AND code = ?', [userid, code], function(err, result) {
             if (err) { 
               con.rollback(function() {
                 return false;
@@ -135,15 +137,15 @@ exports.verifyEmail = (req, res) =>
         return res.json({success: false, message: "Not authorized"})
 
    var code = req.body.code;
-   var username = req.session.username;
+   var userid = req.session.userid;
 
     if (username && code) 
     {
-        con.query('SELECT * FROM EmailCode WHERE username = ? AND code = ?', [username, code], function(error, results, fields) 
+        con.query('SELECT * FROM EmailCode WHERE user_id = ? AND code = ?', [userid, code], function(error, results, fields) 
         {
             if (results.length > 0) 
             {
-                if(updateEmailVerification(code, username) === true)
+                if(updateEmailVerification(code, userid) === true)
                 {
                     console.log('success');
                     return res.json({success: true, message: "Successful verification"})
@@ -164,9 +166,62 @@ exports.verifyEmail = (req, res) =>
 exports.createItinerary = (req, res) =>
 {
     if(!req.session.loggedin)
-        return res.json({success: false, message: "Not authorized"})
+        return res.json({success: false, message: "Not authorized"});
+
+    var userid = req.session.userid;
+    var text = req.body.text;
+    var country = req.body.country;
+    var city = req.body.city;
+    var region = req.body.region;
+
+    //Fail cases:
+    if(text === "")
+        return res.json({success: false, message: "No text provided"})
+
+    con.query("INSERT INTO Itineraries(user_id, text, created_at, country, city, region) VALUES (?, ?, ?, ?, ?, ?)", [userid, text, new Date(), country, city, region],  function(err)
+    {
+        if(err)
+            return res.json({success: false, message: "Error creating itinerary"})
+
+        return res.json({success: true, message: "Successful creation of itinerary"})
+    })
+
+    con.commit();
 
     //con.query()
+}
+
+exports.deleteItinerary = (req, res) =>
+{
+    if(!req.session.loggedin)
+        return res.json({success: false, message: "Not authorized"});
+
+    var userid = req.session.userid;
+    var itineraryID = req.body.itineraryID;
+
+    con.query("SELECT user_id FROM Itineraries WHERE id = ?", itineraryID, function(err, results)
+    {
+        if(err)
+            return res.json({success: false, message: "Error deleting itinerary"});
+
+
+        if(results[0].user_id === userid)
+        {
+            con.query("DELETE FROM Itineraries WHERE id = ?", itineraryID, function(err) 
+            {
+                if(err)
+                    return res.json({success: false, message: "Error deleting itinerary"});
+
+                con.commit();
+
+                return res.json({success: true, message: "Successfully deleted itinerary"});
+            });
+        }
+        else
+        {
+            return res.json({success: false, message: "User is not authorized to perform this action"});
+        }
+    });
 }
 
 exports.uploadFile = (req, res) =>

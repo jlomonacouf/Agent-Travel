@@ -30,13 +30,19 @@ function sendVerificationEmail(codeData)
         subject: 'Welcome to Agent Travel! Confirm your email.',
         text: 'Code: ' + codeData.code + "\nhttp://localhost:3000/verify-email?code=" + codeData.code + "&username=" + codeData.username
     };
-    sgMail.send(msg);
+    sgMail.send(msg).catch(function(err) {
+        console.log(err);
+    });
 };
 
 exports.signup = function(req, res)
 {
     //Error Handling:
-    if(req.body.username.length > 30 || req.body.username.match("/^[0-9a-zA-Z]+$/") === true || req.body.firstname.length > 20 || req.body.lastname.length > 30 || req.body.email.length > 45)
+    var lengthConstraints = req.body.username.length > 30 || req.body.email.length > 45;
+    if((req.body.firstname !== undefined && req.body.firstname.length > 20) || (req.body.lastname !== undefined && req.body.lastname.length > 30))
+        lengthConstraints = false;
+
+    if(req.body.username.match("/^[0-9a-zA-Z]+$/") === false && lengthConstraints === false)
         return res.json({success: false, message: "Bad input"});
 
     var user = { 

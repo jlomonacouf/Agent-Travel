@@ -10,14 +10,6 @@ var bodyParser = require('body-parser');
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users.routes');
 
-//Connect to MongoDB
-mongoose.connect(process.env.DB_URI || require('./config/config').db.uri, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-});
-mongoose.set('useCreateIndex', true);
-mongoose.set('useFindAndModify', false);
-
 var app = express();
 
 app.use(session({

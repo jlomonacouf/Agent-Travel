@@ -173,6 +173,68 @@ exports.verifyEmail = (req, res) =>
     }
 };
 
+function follow(userid, followId)
+{
+    con.beginTransaction(function(err) 
+    {
+        if (err) { return false; }
+
+        //Update followers table
+        con.query('INSERT INTO Followers VALUES (?, ?)', [userid, followId], function(error, result) {
+            if (error) { 
+              con.rollback(function() {
+                return false;
+              });
+            };
+        });
+
+        //Update followed users follower count
+        con.query('UPDATE Users SET followers = followers + 1 WHERE id = ?', [followId], function(error, result) {
+            if (error) { 
+              con.rollback(function() {
+                return false;
+              });
+            };
+        });
+
+        //Update users following count
+        con.query('UPDATE Users SET following = following + 1 WHERE id = ?', [userid], function(error, result) {
+            if (error) { 
+              con.rollback(function() {
+                return false;
+              });
+            };
+        });
+    });
+
+    con.commit();
+
+    return true;
+}
+
+exports.followUser = (req, res) =>
+{
+    if(!req.session.loggedin)
+        return res.json({success: false, message: "Not authorized"});
+    
+    var userid = req.session.userid;
+    var followUsername = req.body.username;
+
+    con.query("SELECT id FROM Users where username = ?", [followUsername], function(err, results) //Find id of the user being followed
+    {
+        if (err) { return res.json({success: false, message: "User not found"}); }
+
+        var followId  = results[0].id;
+
+        if(userid === followId) { return res.json({success: false, message: "Cannot follow user"}); } //User tries to follow him/her self
+
+        if(follow(userid, followId) === false)
+            return res.json({success: false, message: "Cannot follow user"});
+
+        return res.json({success: true, message: "Successfully followed user"});
+    })
+}
+
 exports.createItinerary = (req, res) =>
 {
     if(!req.session.loggedin)
@@ -212,7 +274,6 @@ exports.deleteItinerary = (req, res) =>
         if(err)
             return res.json({success: false, message: "Error deleting itinerary"});
 
-
         if(results[0].user_id === userid)
         {
             con.query("DELETE FROM Itineraries WHERE id = ?", itineraryID, function(err) 
@@ -230,6 +291,8 @@ exports.deleteItinerary = (req, res) =>
             return res.json({success: false, message: "User is not authorized to perform this action"});
         }
     });
+
+    con.commit();
 }
 
 exports.uploadFile = (req, res) =>

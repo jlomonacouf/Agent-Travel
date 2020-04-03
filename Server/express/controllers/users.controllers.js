@@ -45,6 +45,9 @@ exports.signup = function(req, res)
     if(req.body.username.match("/^[0-9a-zA-Z]+$/") === false && lengthConstraints === false)
         return res.json({success: false, message: "Bad input"});
 
+    if(req.body.username === "" || req.body.email === "" || req.body.password === "$2a$10$hk5/mTXkwI9CJiWbLfpKC.7lEIs3/G7tA3x7NJ") //Checks if user, email, or password are empty
+        return res.json({success: false, message: "Bad input"});
+
     var user = { 
         username: req.body.username, 
         email: req.body.email, 

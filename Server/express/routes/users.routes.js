@@ -9,6 +9,8 @@ router.post('/login', user.login);
 
 router.post('/verify-email', user.verifyEmail)
 
+router.post('/get-salt', user.getSalt)
+
 router.post('/follow', user.followUser)
 
 router.post('/create-itinerary', user.createItinerary)

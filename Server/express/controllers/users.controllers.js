@@ -4,6 +4,7 @@ var mysql = require('mysql');
 var randomatic = require('randomatic');
 
 var s3Upload = require("./upload.controllers");
+const bcrypt = require('bcrypt');
 
 const con = mysql.createConnection({
     host: config.rdsDB.host,
@@ -53,7 +54,6 @@ exports.signup = function(req, res)
         email: req.body.email, 
         email_verified: 0, 
         password: req.body.password, 
-        password_salt: req.body.password_salt, 
         created_at: new Date() 
     };
 
@@ -86,38 +86,18 @@ exports.signup = function(req, res)
     return res.json({success: true, message: "Account created successfully"})
 };
 
-exports.getSalt = function(req, res) {
-    var username = req.body.username;
-
-    if (username) 
-    {
-        con.query('SELECT password_salt FROM Users WHERE username = ?', [username], function(error, results, fields) 
-        {
-            if (results.length > 0) 
-            {
-                return res.json({success: true, message: "Success", salt: results[0].password_salt})
-            } 
-            else 
-            {
-				return res.json({success: false, message: "Could not find salt for given username"})
-			}			
-		});
-    }
-    else 
-    {
-        return res.json({success: false, message: "Username not provided"})
-	}
-}
-
 exports.login = function(req,res) {
     var username = req.body.username;
     var password = req.body.password;
 
     if (username && password) 
     {
-        con.query('SELECT * FROM Users WHERE username = ? AND password = ?', [username, password], function(error, results, fields) 
+        con.query('SELECT * FROM Users WHERE username = ?', [username], function(error, results, fields) 
         {
-            if (results.length > 0) 
+            if(results.length === 0)
+                return res.json({success: false, message: "Incorrect username or password"})
+
+            if(bcrypt.compareSync(password, results[0].password) === true)
             {
 				req.session.loggedin = true;
                 req.session.username = username;
@@ -127,7 +107,7 @@ exports.login = function(req,res) {
             else 
             {
 				return res.json({success: false, message: "Incorrect username or password"})
-			}			
+			}	
 		});
     } 
     else 

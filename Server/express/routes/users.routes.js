@@ -11,8 +11,4 @@ router.post('/verify-email', user.verifyEmail)
 
 router.post('/follow', user.followUser)
 
-router.post('/create-itinerary', user.createItinerary)
-
-router.post('/delete-itinerary', user.deleteItinerary)
-
 module.exports = router;

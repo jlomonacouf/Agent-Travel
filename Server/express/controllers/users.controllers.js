@@ -1,10 +1,14 @@
 var sgMail = require('@sendgrid/mail');
 var config = require('../config/config');
+var jwt  = require('jsonwebtoken'); 
+
 var randomatic = require('randomatic');
 
 var s3Upload = require("./upload.controllers");
 const bcrypt = require('bcrypt');
 var con = require("../db");
+
+
 
 //TO DO: Make verification email look good
 function sendVerificationEmail(codeData)
@@ -34,13 +38,20 @@ exports.signup = function(req, res)
     if(req.body.username === "" || req.body.email === "" || req.body.password === "$2a$10$hk5/mTXkwI9CJiWbLfpKC.7lEIs3/G7tA3x7NJ") //Checks if user, email, or password are empty
         return res.json({success: false, message: "Bad input"});
 
+    var hash= bcrypt.hashSync(req.body.password, 10); 
+
     var user = { 
         username: req.body.username, 
         email: req.body.email, 
         email_verified: 0, 
-        password: req.body.password, 
+        password: hash, 
         created_at: new Date() 
     };
+
+    // var token = jwt.sign(user,config.secretKey, {
+    //     algorithm: config.algorithm,
+    //     expiresIn: '8h'
+    //     });
 
     if(req.body.firstname !== undefined)
         user.firstname = req.body.firstname;
@@ -67,8 +78,19 @@ exports.signup = function(req, res)
 
         sendVerificationEmail(emailCode);
     });
+  
 
-    return res.json({success: true, message: "Account created successfully"})
+
+    jwt.sign(user, config.secretKey, {
+        algorithm: config.algorithm,
+        expiresIn: '8h'
+    },(err, token)=>{
+        if(err) {console.log(err)}
+        return res.json({success: true, message: "Account created successfully", jwtoken: token}); 
+    });
+
+   //return res.json({success: true, message: "Account created successfully"})
+   // return res.json({success: true, message: "Account created successfully", jwtoken: token}) 
 };
 
 exports.login = function(req,res) {
@@ -80,15 +102,37 @@ exports.login = function(req,res) {
         console.log(con);
         con.query('SELECT * FROM Users WHERE username = ?', [username], function(error, results, fields) 
         {
+            console.log(results);
+            console.log(password); 
+
             if(results.length === 0)
                 return res.json({success: false, message: "Incorrect username or password"})
+            
 
             if(bcrypt.compareSync(password, results[0].password) === true)
             {
 				req.session.loggedin = true;
                 req.session.username = username;
                 req.session.userid = results[0].id;
-                return res.json({success: true, message: "Successful login"})
+                
+                var user = { 
+                    username: req.body.username, 
+                    email:  results[0].email,  
+                    email_verified: results[0].email_verified,
+                    password: results[0].password, 
+                    created_at: results[0].created_at
+                };
+
+                
+                jwt.sign(username, config.secretKey, {
+                    algorithm: config.algorithm,
+                    expiresIn: '8h'
+                },(err, token)=>{
+                    if(err) {console.log(err)}
+                    return res.json({success: true, message: "Successful login", jwtoken: token})
+                });
+
+               // return res.json({success: true, message: "Successful login", jwtoken: token})
             } 
             else 
             {
@@ -101,6 +145,54 @@ exports.login = function(req,res) {
         return res.json({success: false, message: "Username or password not provided"})
 	}
 };
+
+
+exports.getUser = function(req, res) {
+
+    var username=req.params.username; 
+
+    console.log(username); 
+
+    con.query('SELECT * FROM Users WHERE username = ?', [username], function(error, results, fields) 
+    {
+        if(error) {
+            console.log(error); 
+            return res.json({success: false, message: "Error occured"});
+        }
+
+        if(results.length === 0){
+            return res.json({success: false, message: "Can't find user"}); 
+        } 
+        else 
+        {
+            console.log(results); 
+            console.log(fields); 
+            return res.json(results); 
+        }	
+    });
+
+}; 
+
+exports.updateUser= function(req, res) {
+//TO DO 
+//Reference: 
+    //https://github.com/Somoza925/cen3031-group-project/blob/master/server/routes/events.server.routes.js
+    //https://github.com/agardezi/GTRIP/blob/master/routes/user.js
+}; 
+
+exports.deactivateAccount= function( req, res){
+//Deactivate user account, do not actually delete. 
+
+
+}; 
+
+exports.deleteUser = function (req,res){
+// TO DO 
+
+};
+
+
+
 
 function updateEmailVerification(code, userid) //Returns true if it was able to properly update database
 {

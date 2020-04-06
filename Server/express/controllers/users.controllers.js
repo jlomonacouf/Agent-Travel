@@ -165,6 +165,8 @@ exports.verifyEmail = (req, res) =>
     }
 };
 
+
+
 function follow(userid, followId)
 {
     con.beginTransaction(function(err) 

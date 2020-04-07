@@ -3,36 +3,37 @@
 SELECT * FROM AgentTravel.Users;
 
 -- Creating 5 user profiles and email codes 
+--  Password Hash: '$2b$10$V6nMraVPQHWIS0wjJVMQlugn1.UBMu91L3FH8oeMCL6CLOqa4Ikpy'
+--  Password:  Password321 
 
-INSERT INTO AgentTravel.Users (id, username, first_name, last_name,email, email_verified,phone_number,password,followers, following, created_at)  VALUES ( 1, 'Detienne20', 'Dania', 'Etienne', 'detienne20@ufl.edu', 0, '305-922-7121','$2a$10$F5v1.aaMNqDDEjpXpP8Hb.dW4VGBBSgWGHVPuc',0,0, '2020-04-06');
+INSERT INTO AgentTravel.Users (id, username, first_name, last_name,email, email_verified,phone_number,password,followers, following, created_at)  VALUES ( 1, 'Detienne20', 'Dania', 'Etienne', 'detienne20@ufl.edu', 0, '305-922-7121','$2b$10$V6nMraVPQHWIS0wjJVMQlugn1.UBMu91L3FH8oeMCL6CLOqa4Ikpy',0,0, '2020-04-06');
 
 INSERT INTO AgentTravel.EmailCode (user_id, email, code, created_at) Values (1, 'detienne20@ufl.edu','VDvZCFknSc', '2020-04-06');  
 
 
-
 INSERT INTO AgentTravel.Users (id,username, first_name, last_name,email, email_verified,phone_number,password,followers,following,created_at) 
-    VALUES (2, 'Gremlin', 'Nickan', 'Hussaini', 'n.hussaini@ufl.edu', 0, '786-999-4125','$2a$10$F5v1.aaMNqDDEjpXpP8Hb.dW4VGBBSgWGHVPuc',0,0,'2020-04-06' );
+    VALUES (2, 'Gremlin', 'Nickan', 'Hussaini', 'n.hussaini@ufl.edu', 0, '786-999-4125','$2b$10$V6nMraVPQHWIS0wjJVMQlugn1.UBMu91L3FH8oeMCL6CLOqa4Ikpy',0,0,'2020-04-06' );
 
 INSERT INTO AgentTravel.EmailCode (user_id, email, code, created_at) Values (2, 'n.hussaini@ufl.edu','kvaBOl6xcy', '2020-04-06');  
 
 
 
 INSERT INTO AgentTravel.Users(id,username, first_name, last_name,email, email_verified,phone_number,password,followers,following,created_at) 
-    VALUES (3, 'Ophillia', 'Angely', 'Etienne', 'angely.guzman001@mymdc.net', 0, '786-283-0137','$2a$10$F5v1.aaMNqDDEjpXpP8Hb.dW4VGBBSgWGHVPuc',0,0, '2020-04-06' );
+    VALUES (3, 'Ophillia', 'Angely', 'Etienne', 'angely.guzman001@mymdc.net', 0, '786-283-0137','$2b$10$V6nMraVPQHWIS0wjJVMQlugn1.UBMu91L3FH8oeMCL6CLOqa4Ikpy',0,0, '2020-04-06' );
 
 INSERT INTO AgentTravel.EmailCode (user_id, email, code, created_at) Values (3, 'angely.guzman001@mymdc.net','LoqNnERcqV', '2020-04-06');  
 
 
 
 INSERT INTO AgentTravel.Users(id,username, first_name, last_name,email, email_verified,phone_number,password,followers,following,created_at) 
-    VALUES (4, 'JLo', 'Justin', 'LoMonaco', 'justinpat.lomonaco@gmail.com', 0, '904-465-6071','$2a$10$F5v1.aaMNqDDEjpXpP8Hb.dW4VGBBSgWGHVPuc',0,0, '2020-04-06' );
+    VALUES (4, 'JLo', 'Justin', 'LoMonaco', 'justinpat.lomonaco@gmail.com', 0, '904-465-6071','$2b$10$V6nMraVPQHWIS0wjJVMQlugn1.UBMu91L3FH8oeMCL6CLOqa4Ikpy',0,0, '2020-04-06' );
 
 INSERT INTO AgentTravel.EmailCode (user_id, email, code, created_at) Values (4, 'justinpat.lomonaco@gmail.com','k6bQ9lsizk', '2020-04-06');  
 
 
 
 INSERT INTO AgentTravel.Users(id,username, first_name, last_name,email, email_verified,phone_number,password,followers,following,created_at) 
-    VALUES (5, 'SamG', 'Samantha', 'Garcia', 'samangarc22@gmail.com', 0, '305-965-1895','$2a$10$F5v1.aaMNqDDEjpXpP8Hb.dW4VGBBSgWGHVPuc',0,0, '2020-04-06' );
+    VALUES (5, 'SamG', 'Samantha', 'Garcia', 'samangarc22@gmail.com', 0, '305-965-1895','$2b$10$V6nMraVPQHWIS0wjJVMQlugn1.UBMu91L3FH8oeMCL6CLOqa4Ikpy',0,0, '2020-04-06' );
 
 INSERT INTO AgentTravel.EmailCode (user_id, email, code, created_at) Values (5, 'samangarc22@gmail.com','eo4WoltBji', '2020-04-06');  
 
@@ -44,10 +45,11 @@ SELECT * FROM AgentTravel.Users;
 -- TO DO: 
 
 -- Upload profile pictures for each user ???? 
-    -- CAN ADD PHOTOS TO USER PROFILE OR HAVE ANOTHER TABLE 
-    -- Does the location table need to be populated before anything else? 
-    -- TAKEN TRIPS ? HOW DOES THAT WORK? 
+    -- CAN ADD PHOTOS TO USER PROFILE OR HAVE ANOTHER TABLE -- Attribute. 
+    -- Does the location table need to be populated before anything else? Not needed** 
+    -- TAKEN TRIPS ? HOW DOES THAT WORK? taken attribute? 
     -- TRIPS does not have a private field, or start/end date or populate designation? 
+    -- Likes not implemented ** 
 
     -- STRETCH GOALS : 
     -- NO RECOMMENDED TIME SAD ;/ 

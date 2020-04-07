@@ -2,11 +2,18 @@
 #Tested with MySQL Workbench and Apache Postman
 
 
+#Downloads: 
+    npm install –save express body-parser jsonwebtoken 
+
+    Primary reference: https://www.dotnettricks.com/learn/nodejs/token-based-authentication-using-json-web-token
+
+    Secondary reference: https://arjunphp.com/use-jwt-json-web-token-express-js/
+
 #Running sql scrips :
 
-        Reference:  https://stackoverflow.com/questions/8940230/how-to-run-sql-script-in-mysql
-
         In MySQL WorkBench Click Run SQL Script, select Populate DBTables. 
+
+        Reference:  https://stackoverflow.com/questions/8940230/how-to-run-sql-script-in-mysql
 
 
 

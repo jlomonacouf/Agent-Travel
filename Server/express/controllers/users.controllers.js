@@ -1,6 +1,6 @@
 var sgMail = require('@sendgrid/mail');
 var config = require('../config/config');
-var jwt  = require('jsonwebtoken'); 
+//var jwt  = require('jsonwebtoken'); 
 
 var randomatic = require('randomatic');
 
@@ -35,16 +35,20 @@ exports.signup = function(req, res)
     if(req.body.username.match("/^[0-9a-zA-Z]+$/") === false && lengthConstraints === false)
         return res.json({success: false, message: "Bad input"});
 
-    if(req.body.username === "" || req.body.email === "" || req.body.password === "$2a$10$hk5/mTXkwI9CJiWbLfpKC.7lEIs3/G7tA3x7NJ") //Checks if user, email, or password are empty
+    if(req.body.username === "" || req.body.email === "" || req.body.password === "") //Checks if user, email, or password are empty
         return res.json({success: false, message: "Bad input"});
 
-    var hash= bcrypt.hashSync(req.body.password, 10); 
+    var hash = bcrypt.hashSync(req.body.password, 10); 
 
     var user = { 
         username: req.body.username, 
+        first_name: (req.body.first_name === undefined) ? "" : req.body.first_name,
+        last_name: (req.body.last_name === undefined) ? "" : req.body.last_name,
         email: req.body.email, 
         email_verified: 0, 
+        phone_number: (req.body.phone_number === undefined) ? "" : req.body.phone_number,
         password: hash, 
+        public: (req.body.public === undefined) ? 1 : req.body.public,
         created_at: new Date() 
     };
 
@@ -52,11 +56,6 @@ exports.signup = function(req, res)
     //     algorithm: config.algorithm,
     //     expiresIn: '8h'
     //     });
-
-    if(req.body.firstname !== undefined)
-        user.firstname = req.body.firstname;
-    if(req.body.lastname !== undefined)
-        user.lastname = req.body.lastname;
 
     con.query('INSERT INTO Users SET ?', user, (err, results) => {
         if(err) 
@@ -81,15 +80,15 @@ exports.signup = function(req, res)
   
 
 
-    jwt.sign(user, config.secretKey, {
+    /*jwt.sign(user, config.secretKey, {
         algorithm: config.algorithm,
         expiresIn: '8h'
     },(err, token)=>{
         if(err) {console.log(err)}
         return res.json({success: true, message: "Account created successfully", jwtoken: token}); 
-    });
+    });*/
 
-   //return res.json({success: true, message: "Account created successfully"})
+   return res.json({success: true, message: "Account created successfully"})
    // return res.json({success: true, message: "Account created successfully", jwtoken: token}) 
 };
 
@@ -114,25 +113,17 @@ exports.login = function(req,res) {
 				req.session.loggedin = true;
                 req.session.username = username;
                 req.session.userid = results[0].id;
-                
-                var user = { 
-                    username: req.body.username, 
-                    email:  results[0].email,  
-                    email_verified: results[0].email_verified,
-                    password: results[0].password, 
-                    created_at: results[0].created_at
-                };
 
                 
-                jwt.sign(username, config.secretKey, {
+                /*jwt.sign(username, config.secretKey, {
                     algorithm: config.algorithm,
                     expiresIn: '8h'
                 },(err, token)=>{
                     if(err) {console.log(err)}
                     return res.json({success: true, message: "Successful login", jwtoken: token})
-                });
+                });*/
 
-               // return res.json({success: true, message: "Successful login", jwtoken: token})
+               return res.json({success: true, message: "Successful login"})
             } 
             else 
             {
@@ -153,7 +144,50 @@ exports.getUser = function(req, res) {
 
     console.log(username); 
 
-    con.query('SELECT * FROM Users WHERE username = ?', [username], function(error, results, fields) 
+    con.query('SELECT username, first_name, last_name, email, email_verified, phone_number, public, followers, following FROM Users WHERE username = ?', [username], function(error, results, fields) 
+    {
+        if(error) {
+            console.log(error); 
+            return res.json({success: false, message: "Error occured"});
+        }
+
+        if(results.length === 0){
+            return res.json({success: false, message: "Can't find user"}); 
+        } 
+        else 
+        {
+            if(results[0].public === true)
+                return res.json({success: true, results}); 
+            
+            return res.json({success: false, message: "This account is private"}); 
+        }	
+    });
+}; 
+
+exports.updateUser= function(req, res) {
+    if(!req.session.loggedin)
+        return res.json({success: false, message: "Not authorized"})
+
+    var user = {};
+
+    if(req.body.first_name !== undefined)
+        user.first_name = req.body.first_name;
+    if(req.body.last_name !== undefined)
+        user.last_name = req.body.last_name;
+    if(req.body.phone_number !== undefined)
+        user.phone_number = req.body.phone_number;
+    if(req.body.public !== undefined)
+        user.public = (req.body.public === 1) ? 0b1 : 0b0;
+
+    if(req.body.password !== undefined)
+    {
+        if(req.body.password === "") //Checks if password is empty
+            return res.json({success: false, message: "Bad input"});
+
+        user.password = bcrypt.hashSync(req.body.password, 10); 
+    }
+
+    con.query('UPDATE Users SET ? WHERE id = ?', [user, req.session.userid], function(error, results, fields) 
     {
         if(error) {
             console.log(error); 
@@ -167,32 +201,56 @@ exports.getUser = function(req, res) {
         {
             console.log(results); 
             console.log(fields); 
-            return res.json(results); 
+            return res.json({success: true, message: "Updated user"}); 
         }	
     });
-
 }; 
 
-exports.updateUser= function(req, res) {
-//TO DO 
-//Reference: 
-    //https://github.com/Somoza925/cen3031-group-project/blob/master/server/routes/events.server.routes.js
-    //https://github.com/agardezi/GTRIP/blob/master/routes/user.js
-}; 
-
-exports.deactivateAccount= function( req, res){
+/*exports.deactivateAccount= function( req, res){
 //Deactivate user account, do not actually delete. 
 
 
-}; 
+};*/ 
+
+function deleteUserTransaction(userid)
+{
+    console.log("Beginning deletion transaction for user " + userid);
+    con.beginTransaction(function(err) 
+    {
+        if (err) { return false; }
+
+        console.log("Deleting code from database");
+        con.query('DELETE FROM EmailCode WHERE user_id = ?', [userid], function(err, result) {
+            if (err) { 
+            con.rollback(function() {
+                return false;
+            });
+            };
+        });
+
+        console.log("Deleting user from database");
+        con.query('DELETE FROM Users WHERE id = ?', [userid], function(err, result) {
+            if (err) { 
+            con.rollback(function() {
+                return false;
+            });
+            };
+        });
+    });
+
+    con.commit();
+    return true;
+}
 
 exports.deleteUser = function (req,res){
-// TO DO 
+    if(!req.session.loggedin)
+        return res.json({success: false, message: "Not authorized"})
 
+    if(deleteUserTransaction(req.session.userid) === true)
+        return res.json({success: true, message: "Successfully deleted user"})
+    else
+        return res.json({success: false, message: "Unabled to delete user"})
 };
-
-
-
 
 function updateEmailVerification(code, userid) //Returns true if it was able to properly update database
 {

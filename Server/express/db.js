@@ -5,7 +5,15 @@ const con = mysql.createConnection({
     host: config.rdsDB.host,
     user: config.rdsDB.username,
     password: config.rdsDB.password,
-    database: config.rdsDB.dbName
+    database: config.rdsDB.dbName,
+    typeCast: function castField( field, useDefaultTypeCasting ) {
+      if(field.type === "BIT" && field.length === 1) {
+        var bytes = field.buffer();
+
+        return(bytes[0] === 1);
+      }
+      return(useDefaultTypeCasting());
+    }
 });
   
 con.connect((err) => {

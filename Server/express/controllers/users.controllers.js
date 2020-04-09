@@ -1,10 +1,9 @@
-var sgMail = require('@sendgrid/mail');
-var config = require('../config/config');
+const sgMail = require('@sendgrid/mail');
+const config = require('../config/config');
 //var jwt  = require('jsonwebtoken'); 
 
-var randomatic = require('randomatic');
-
-var s3Upload = require("./upload.controllers");
+const randomatic = require('randomatic');
+const S3Upload = require('../S3Upload');
 const bcrypt = require('bcrypt');
 var con = require("../db");
 
@@ -24,6 +23,16 @@ function sendVerificationEmail(codeData)
         console.log(err);
     });
 };
+
+exports.uploadProfilePhoto = function (req, res)
+{
+    if(req.session.loggedin === false || req.session.loggedin === undefined)
+        return res.json({success: false, message: "Not authorized"});
+
+    S3Upload.generateUploadURL(req.session.username).then((uploadURL) => {
+        res.json({success: true, url: uploadURL})
+    })
+}
 
 exports.signup = function(req, res)
 {

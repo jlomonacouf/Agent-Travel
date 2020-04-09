@@ -59,6 +59,12 @@ Parameters
 followUsername - string
 */
 
+router.post('/upload-profile-photo', user.uploadProfilePhoto)
+/*
+Parameters
+followUsername - string
+*/
+
 module.exports = router;
 
 

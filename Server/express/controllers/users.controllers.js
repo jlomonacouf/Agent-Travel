@@ -144,7 +144,7 @@ exports.getUser = function(req, res) {
 
     console.log(username); 
 
-    con.query('SELECT id, username, first_name, last_name, email, email_verified, phone_number, public, followers, following FROM Users WHERE username = ?', [username], function(error, results, fields) 
+    con.query('SELECT id, username, first_name, last_name, email, email_verified, phone_number, public, followers, following, avatar_path FROM Users WHERE username = ?', [username], function(error, results, fields) 
     {
         if(error) {
             console.log(error); 

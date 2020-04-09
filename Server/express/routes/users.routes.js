@@ -36,7 +36,7 @@ phone_number - string (optional)
 public - 1 or 0 (optional)
 */
 
-router.get('/:username', user.getUser); 
+router.get('/get/:username', user.getUser); 
 /* No parameters */
 
 /*ROUTES TO GET EVERYTHING ELSE */

@@ -151,8 +151,6 @@ exports.getUser = function(req, res) {
 
     var username=req.params.username; 
 
-    console.log(username); 
-
     con.query('SELECT id, username, first_name, last_name, email, email_verified, phone_number, public, followers, following, avatar_path FROM Users WHERE username = ?', [username], function(error, results, fields) 
     {
         if(error) {
@@ -167,20 +165,26 @@ exports.getUser = function(req, res) {
         {
             var id = results[0].id;
             delete results[0].id;
-            console.log(results);
-            if(results[0].public === true || req.session.userid === id)
-            {
+
+            if(req.session.userid === undefined && results[0].public === true)
                 return res.json({success: true, results}); 
-            }
-            else
-            {
-                isFollowing(req.session.userid, id).then((val) => {
-                    if(val === true) //Return user information if user is following a private account
+
+            isFollowing(req.session.userid, id).then((val) => { //Check if user requesting information follows other user
+                results[0].follows = val;
+
+                isFollowing(id, req.session.userid).then((val) => { //Check if other user follows the user requesting information
+                    results[0].followsMe = val;
+
+                    if(results[0].public === true || req.session.userid === id || results[0].follows === true)
+                    {
                         return res.json({success: true, results}); 
+                    }
                     else
+                    {
                         return res.json({success: false, message: "This account is private"}); 
+                    }
                 })
-            }
+            })
         }	
     });
 }; 
@@ -505,5 +509,93 @@ exports.unfollowUser = (req, res) =>
             else
                 return res.json({success: false, message: "Cannot unfollow user"});
         });
+    })
+}
+
+function canGetUserInformation(req, username)
+{
+    return new Promise((resolve, reject) => {
+        con.query('SELECT id, public FROM Users WHERE username = ?', [username], function(error, results, fields) 
+        {
+            if(error) {
+                console.log(error); 
+                reject(false);
+                return;
+            }
+
+            if(results.length === 0){ //Check if user exists
+                resolve(false);
+                return;
+            } 
+            else 
+            {
+                var id = results[0].id;
+                delete results[0].id;
+
+                if(results[0].public === true || req.session.userid === id)
+                {
+                    resolve(true);
+                    return;
+                }
+
+                isFollowing(req.session.userid, id).then((val) => { //Check if user requesting information follows other user
+
+                    if(results[0].public === true || req.session.userid === id || val === true)
+                    {
+                        resolve(true);
+                        return; 
+                    }
+                    else
+                    {
+                        resolve(false);
+                        return;
+                    }
+                })
+            }	
+        });
+    })
+}
+
+exports.getFollowing = (req, res) => {
+    var username=req.params.username; 
+    canGetUserInformation(req, username).then((canGet) => {
+        if(canGet)
+        {
+            con.query('SELECT username FROM Users WHERE id in (SELECT user2_id FROM (SELECT id FROM Users WHERE username = ?) a JOIN Followers on a.id = Followers.user1_id);', [username], function(error, results, fields) 
+            {
+                if(error)
+                    return res.json({success: false, message: "Could not retrieve users being followed"});
+
+                return res.json({success:true, results})
+            })
+        }
+        else
+        {
+            return res.json({success: false, message: "User is private"});
+        }
+    }).catch(() => {
+        return res.json({success: false, message: "Error retrieving user information"});
+    })
+}
+
+exports.getFollowers = (req, res) => {
+    var username=req.params.username; 
+    canGetUserInformation(req, username).then((canGet) => {
+        if(canGet)
+        {
+            con.query('SELECT username FROM Users WHERE id in (SELECT user1_id FROM (SELECT id FROM Users WHERE username = ?) a JOIN Followers on a.id = Followers.user2_id);', [username], function(error, results, fields) 
+            {
+                if(error)
+                    return res.json({success: false, message: "Could not retrieve user followers"});
+
+                return res.json({success:true, results})
+            })
+        }
+        else
+        {
+            return res.json({success: false, message: "User is private"});
+        }
+    }).catch(() => {
+        return res.json({success: false, message: "Error retrieving user information"});
     })
 }

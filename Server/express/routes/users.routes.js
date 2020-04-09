@@ -37,7 +37,13 @@ public - 1 or 0 (optional)
 */
 
 router.get('/get/:username', user.getUser); 
-/* No parameters */
+/* No parameters - Gets information about users */
+
+router.get('/get-following/:username', user.getFollowing); 
+/* No parameters - Gets list of names that the user is following */
+
+router.get('/get-followers/:username', user.getFollowers); 
+/* No parameters - Gets users followers */
 
 /*ROUTES TO GET EVERYTHING ELSE */
 

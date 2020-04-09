@@ -144,7 +144,7 @@ exports.getUser = function(req, res) {
 
     console.log(username); 
 
-    con.query('SELECT username, first_name, last_name, email, email_verified, phone_number, public, followers, following FROM Users WHERE username = ?', [username], function(error, results, fields) 
+    con.query('SELECT id, username, first_name, last_name, email, email_verified, phone_number, public, followers, following FROM Users WHERE username = ?', [username], function(error, results, fields) 
     {
         if(error) {
             console.log(error); 
@@ -156,10 +156,22 @@ exports.getUser = function(req, res) {
         } 
         else 
         {
-            if(results[0].public === true)
+            var id = results[0].id;
+            delete results[0].id;
+            console.log(results);
+            if(results[0].public === true || req.session.userid === id)
+            {
                 return res.json({success: true, results}); 
-            
-            return res.json({success: false, message: "This account is private"}); 
+            }
+            else
+            {
+                isFollowing(req.session.userid, id).then((val) => {
+                    if(val === true) //Return user information if user is following a private account
+                        return res.json({success: true, results}); 
+                    else
+                        return res.json({success: false, message: "This account is private"}); 
+                })
+            }
         }	
     });
 }; 
@@ -260,7 +272,7 @@ function updateEmailVerification(code, userid) //Returns true if it was able to 
         if (err) { return false; }
 
         console.log("Updating user to be verified");
-        con.query('UPDATE Users SET email_verified = 1 WHERE id = ?', [userid], function(err, result) {
+        con.query('UPDATE Users SET email_verified = ' + 0b1 + ' WHERE id = ?', [userid], function(err, result) {
             if (err) { 
               con.rollback(function() {
                 return false;
@@ -315,45 +327,74 @@ exports.verifyEmail = (req, res) =>
     }
 };
 
+function isFollowing(userid, followId)
+{
+    return new Promise((resolve, reject) => {
+        con.query("SELECT * FROM Followers WHERE user1_id = ? AND user2_id = ?", [userid, followId], function(err, results) //Find id of the user being followed
+        {
+            if (err) { 
+                console.log("An error occurred while searching for followers\n" + err); 
+                resolve(false);
+            }
 
+            if(results.length > 0)
+                resolve(true);
+            else
+                resolve(false);
+        })
+    })
+}
 
 function follow(userid, followId)
 {
-    con.beginTransaction(function(err) 
-    {
-        if (err) { return false; }
+    return new Promise((resolve, reject) => {
+        isFollowing(userid, followId).then((val) => {
+            if(val === true)
+            {
+                resolve(false);
+                return;
+            }
 
-        //Update followers table
-        con.query('INSERT INTO Followers VALUES (?, ?)', [userid, followId], function(error, result) {
-            if (error) { 
-              con.rollback(function() {
-                return false;
-              });
-            };
-        });
-
-        //Update followed users follower count
-        con.query('UPDATE Users SET followers = followers + 1 WHERE id = ?', [followId], function(error, result) {
-            if (error) { 
-              con.rollback(function() {
-                return false;
-              });
-            };
-        });
-
-        //Update users following count
-        con.query('UPDATE Users SET following = following + 1 WHERE id = ?', [userid], function(error, result) {
-            if (error) { 
-              con.rollback(function() {
-                return false;
-              });
-            };
+            con.beginTransaction(function(err) 
+            {
+                if (err) { resolve(false); }
+        
+                //Update followers table
+                con.query('INSERT INTO Followers VALUES (?, ?)', [userid, followId], function(error, result) {
+                    if (error) { 
+                        con.rollback(function() {
+                            resolve(false);
+                            return;
+                        });
+                    };
+                });
+        
+                //Update followed users follower count
+                con.query('UPDATE Users SET followers = followers + 1 WHERE id = ?', [followId], function(error, result) {
+                    if (error) { 
+                        con.rollback(function() {
+                            resolve(false);
+                            return;
+                        });
+                    };
+                });
+        
+                //Update users following count
+                con.query('UPDATE Users SET following = following + 1 WHERE id = ?', [userid], function(error, result) {
+                    if (error) { 
+                        con.rollback(function() {
+                            resolve(false);
+                            return;
+                        });
+                    };
+                });
+            });
+        
+            con.commit();
+        
+            resolve(true);
         });
     });
-
-    con.commit();
-
-    return true;
 }
 
 exports.followUser = (req, res) =>
@@ -361,20 +402,99 @@ exports.followUser = (req, res) =>
     if(!req.session.loggedin)
         return res.json({success: false, message: "Not authorized"});
     
+    var followUsername = req.body.followUsername;
     var userid = req.session.userid;
-    var followUsername = req.body.username;
 
     con.query("SELECT id FROM Users where username = ?", [followUsername], function(err, results) //Find id of the user being followed
     {
-        if (err) { return res.json({success: false, message: "User not found"}); }
+        if (err || results.length === 0) { return res.json({success: false, message: "User not found"}); }
 
         var followId  = results[0].id;
 
         if(userid === followId) { return res.json({success: false, message: "Cannot follow user"}); } //User tries to follow him/her self
 
-        if(follow(userid, followId) === false)
-            return res.json({success: false, message: "Cannot follow user"});
+        follow(userid, followId).then((val) => {
+            if(val === true)
+                return res.json({success: true, message: "Successfully followed user"});
+            else
+                return res.json({success: false, message: "Cannot follow user"});
+        });
+    })
+}
 
-        return res.json({success: true, message: "Successfully followed user"});
+function unfollow(userid, followId)
+{
+    return new Promise((resolve, reject) => {
+        isFollowing(userid, followId).then((val) => {
+            if(val === false)
+            {
+                resolve(false);
+                return;
+            }
+
+            con.beginTransaction(function(err) 
+            {
+                if (err) { resolve(false); }
+        
+                //Update followers table
+                con.query('DELETE FROM Followers WHERE user1_id = ? AND user2_id = ?', [userid, followId], function(error, result) {
+                    if (error) { 
+                        con.rollback(function() {
+                            resolve(false);
+                            return;
+                        });
+                    };
+                });
+        
+                //Update followed users follower count
+                con.query('UPDATE Users SET followers = followers - 1 WHERE id = ?', [followId], function(error, result) {
+                    if (error) { 
+                        con.rollback(function() {
+                            resolve(false);
+                            return;
+                        });
+                    };
+                });
+        
+                //Update users following count
+                con.query('UPDATE Users SET following = following - 1 WHERE id = ?', [userid], function(error, result) {
+                    if (error) { 
+                        con.rollback(function() {
+                            resolve(false);
+                            return;
+                        });
+                    };
+                });
+            });
+        
+            con.commit();
+
+            resolve(true);
+        });
+    });
+}
+
+exports.unfollowUser = (req, res) =>
+{
+    if(!req.session.loggedin)
+        return res.json({success: false, message: "Not authorized"});
+    
+    var followUsername = req.body.followUsername;
+    var userid = req.session.userid;
+
+    con.query("SELECT id FROM Users where username = ?", [followUsername], function(err, results) //Find id of the user being followed
+    {
+        if (err || results.length === 0) { return res.json({success: false, message: "User not found"}); }
+
+        var followId  = results[0].id;
+
+        if(userid === followId) { return res.json({success: false, message: "Cannot unfollow user"}); } //User tries to unfollow him/her self
+
+        unfollow(userid, followId).then((val) => {
+            if(val === true)
+                return res.json({success: true, message: "Successfully unfollowed user"});
+            else
+                return res.json({success: false, message: "Cannot unfollow user"});
+        });
     })
 }

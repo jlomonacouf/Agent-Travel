@@ -26,11 +26,11 @@ function sendVerificationEmail(codeData)
 
 exports.uploadProfilePhoto = function (req, res)
 {
-    if(req.session.loggedin === false || req.session.loggedin === undefined)
-        return res.json({success: false, message: "Not authorized"});
+    //if(req.session.loggedin === false || req.session.loggedin === undefined)
+    //    return res.json({success: false, message: "Not authorized"});
 
-    S3Upload.generateUploadURL(req.session.username).then((uploadURL) => {
-        res.json({success: true, url: uploadURL})
+    S3Upload.generateUploadURL(req.session.username).then((data) => {
+        res.json({success: true, data: data})
     })
 }
 

@@ -16,7 +16,7 @@ const s3 = new AWS.S3({
 exports.generateUploadURL = (username) => {
     return new Promise((resolve, reject) => {
         //const fileName =  randomatic('Aa0', 40);
-        const fileName =  "hellomate.jpg";
+        const fileName =  "hellomate.txt";
         var params = {
             Bucket: BUCKET_NAME,
             Key: username + "/" + fileName,

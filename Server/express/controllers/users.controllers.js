@@ -358,6 +358,27 @@ function isFollowing(userid, followId)
     })
 }
 
+exports.isFollowingUser = (req, res) => {
+    if(!req.session.loggedin)
+        return res.json({success: false, message: "Not authorized"});
+    
+    con.query('SELECT id FROM Users WHERE username = ?', [req.body.followUsername], function(error, results, fields) 
+    {
+        if(error)
+            return res.json({success: false, message: "An error occurred searching for user"});
+        
+        if(results.length === 0)
+            return res.json({success: false, message: "User not found"});
+
+        isFollowing(req.session.userid, results[0].id).then((val) => {
+            if(val === true)
+                return res.json({success: true, isFollowing: true});
+            else
+                return res.json({success: true, isFollowing: false});
+        })
+    })
+}
+
 function follow(userid, followId)
 {
     return new Promise((resolve, reject) => {

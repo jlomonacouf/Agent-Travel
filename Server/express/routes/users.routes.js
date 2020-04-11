@@ -53,6 +53,12 @@ Parameters
 code - string
 */
 
+router.post('/isFollowingUser', user.isFollowingUser)
+/*
+Parameters
+followUsername - string
+*/
+
 router.post('/follow', user.followUser)
 /*
 Parameters

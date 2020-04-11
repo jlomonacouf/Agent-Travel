@@ -202,7 +202,7 @@ exports.updateUser= function(req, res) {
     if(req.body.phone_number !== undefined)
         user.phone_number = req.body.phone_number;
     if(req.body.public !== undefined)
-        user.public = (req.body.public === 1) ? 0b1 : 0b0;
+        user.public = (req.body.public === "1") ? 0b1 : 0b0;
 
     if(req.body.password !== undefined)
     {
@@ -229,6 +229,8 @@ exports.updateUser= function(req, res) {
             return res.json({success: true, message: "Updated user"}); 
         }	
     });
+
+    con.commit();
 }; 
 
 /*exports.deactivateAccount= function( req, res){

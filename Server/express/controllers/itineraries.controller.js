@@ -45,12 +45,15 @@ exports.getItineraryByID = (req, res) =>
     if(req.session.loggedin === false || req.session.loggedin === undefined)
         return res.json({success: false, message: "Not authorized"});
 
-    con.query('SELECT * FROM Itineraries WHERE id = ?', [req.params.id], function(err, results) 
+    con.query('SELECT * FROM AgentTravel.Itineraries i JOIN (SELECT username, id AS uid FROM AgentTravel.Users) u ON u.uid = i.user_id JOIN (SELECT GROUP_CONCAT(hashtag) as "hashtags" FROM AgentTravel.Hashtag h JOIN AgentTravel.Itinerary_Hashtag ih ON h.id = ih.hashtag_id WHERE ih.itinerary_id = ?) b WHERE i.id = ?', [req.params.id, req.params.id], function(err, results) 
     {
         if(err)
             return res.json({success: false, message: "Error getting user itineraries"})
         
-        return res.json({success: true, results});
+        if(results.length !== 0)
+            return res.json({success: true, results});
+        else
+            return res.json({success: false, message: "Itinerary does not exist"});
     })
 }
 

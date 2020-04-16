@@ -61,11 +61,6 @@ exports.signup = function(req, res)
         created_at: new Date() 
     };
 
-    // var token = jwt.sign(user,config.secretKey, {
-    //     algorithm: config.algorithm,
-    //     expiresIn: '8h'
-    //     });
-
     con.query('INSERT INTO Users SET ?', user, (err, results) => {
         if(err) 
             return res.json({success: false, message: "Sign up failed"});
@@ -79,16 +74,17 @@ exports.signup = function(req, res)
         };
 
         //Generate and insert email code into database whenever a new user is generated
-        con.query('INSERT INTO EmailCode SET ?', emailCode, (err, res) => {
+        con.query('INSERT INTO EmailCode SET ?', emailCode, (err, emailResults) => {
             if(err)
                 return res.json({success: false, message: "Failed to create email verification"})
+            
+            sendVerificationEmail(emailCode);
+            return res.json({success: true, message: "Account created successfully"})
         });
-
-        sendVerificationEmail(emailCode);
     });
   
 
-
+    con.commit();
     /*jwt.sign(user, config.secretKey, {
         algorithm: config.algorithm,
         expiresIn: '8h'
@@ -96,8 +92,6 @@ exports.signup = function(req, res)
         if(err) {console.log(err)}
         return res.json({success: true, message: "Account created successfully", jwtoken: token}); 
     });*/
-
-   return res.json({success: true, message: "Account created successfully"})
    // return res.json({success: true, message: "Account created successfully", jwtoken: token}) 
 };
 

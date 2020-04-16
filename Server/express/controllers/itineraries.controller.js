@@ -25,12 +25,24 @@ exports.getUserItineraries = (req, res) =>
     })
 }
 
+exports.getRelevantItineraries = (req, res) => 
+{
+    if(req.session.loggedin === false || req.session.loggedin === undefined)
+        return res.json({success: false, message: "Not authorized"});
+    
+    /*
+    expects
+    tags: [...]
+    locations: [{address: ..., city: ..., country: ...}]
+     */
+}
+
 exports.getAllItineraries = (req, res) => 
 {
     if(req.session.loggedin === false || req.session.loggedin === undefined)
         return res.json({success: false, message: "Not authorized"});
 
-    con.query('SELECT * FROM Itineraries', function(err, results) 
+    con.query('SELECT * FROM Itineraries i LEFT JOIN (SELECT id, itinerary_id, image_path FROM Photos p GROUP BY itinerary_id) a ON i.id = a.itinerary_id;', function(err, results) 
     {
         if(err)
             return res.json({success: false, message: "Error getting user itineraries"})

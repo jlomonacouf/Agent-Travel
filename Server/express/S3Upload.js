@@ -13,13 +13,12 @@ const s3 = new AWS.S3({
     region: 'us-east-2'
 });
 
-exports.generateUploadURL = (username) => {
+exports.generateUploadURL = (username, subDirectory) => {
     return new Promise((resolve, reject) => {
-        //const fileName =  randomatic('Aa0', 40);
-        const fileName =  "hellomate.txt";
+        const fileName =  username + "/" + subDirectory + "/" + randomatic('Aa0', 40) + ".jpg";
         var params = {
             Bucket: BUCKET_NAME,
-            Key: username + "/" + fileName,
+            Key: fileName,
             Expires: 60
         };
 

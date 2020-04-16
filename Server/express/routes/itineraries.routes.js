@@ -12,6 +12,8 @@ router.get('/get-all-itineraries', itinerary.getAllItineraries);
 router.get('/get-by-id/:id', itinerary.getItineraryByID); 
 /* No parameters - Returns all trips in the database */
 
+router.post('/get-relevant', itinerary.getRelevantItineraries)
+
 router.post('/create-itinerary', itinerary.createItinerary);
 
 router.post('/delete-itinerary', itinerary.deleteItinerary);

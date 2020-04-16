@@ -63,7 +63,22 @@ exports.getItineraryByID = (req, res) =>
             return res.json({success: false, message: "Error getting user itineraries"})
         
         if(results.length !== 0)
-            return res.json({success: true, results});
+        {
+            var itinerary = results[0];
+            con.query("SELECT * FROM AgentTravel.Photos WHERE itinerary_id = ?", [req.params.id], function(err, imageResults) {
+                if(err)
+                    return res.json({success: false, message: "Error getting user itineraries"})
+                
+                itinerary.images = [];
+                console.log(imageResults)
+                imageResults.forEach(image => {
+                    itinerary.images.push({title: image.title, caption: image.caption, image_path: image.image_path})
+                    console.log(itinerary)
+                });
+
+                return res.json({success: true, itinerary});
+            })
+        }
         else
             return res.json({success: false, message: "Itinerary does not exist"});
     })

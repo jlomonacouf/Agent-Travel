@@ -85,8 +85,8 @@ exports.createTrip = (req, res) =>
     var trip = {
         user_id: req.session.userid,
         name: req.body.name,
-        start_date: req.body.dates[0].start_date,
-        end_date: req.body.dates[req.body.dates.length-1].end_date,
+        start_date: req.body.dates[0].startDate,
+        end_date: req.body.dates[req.body.dates.length-1].endDate,
         image_path: (req.body.image_path) ? req.body.image_path : "default path", 
         created_at: new Date()
     }
@@ -113,14 +113,14 @@ exports.createTrip = (req, res) =>
             con.query("INSERT INTO Trips SET ?", [trip], function(err, tripResults) 
             {
                 if(err)
-                    return res.json({success: false, message: "Error creating trip"});
+                    return res.json({success: false, message: err});
                 
                 var tripId = tripResults.insertId;
 
                 var tripLocationDates = [];
 
                 for(var i = 0; i < locationIDList.length; i++)
-                    tripLocationDates.push([tripId, locationIDList[i], dates[i].start_date, dates[i].end_date]);
+                    tripLocationDates.push([tripId, locationIDList[i], dates[i].startDate, dates[i].endDate]);
                 
                 console.log(tripLocationDates);
                 con.query("INSERT INTO Trip_Location (trip_id, location_id, start_date, end_date) VALUES ?", [tripLocationDates], function(err, tripResults) 

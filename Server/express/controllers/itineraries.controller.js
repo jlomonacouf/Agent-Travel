@@ -12,7 +12,7 @@ exports.getUserItineraries = (req, res) =>
         
         if(idResults.length !== 0)
         {
-            con.query('SELECT * FROM Itineraries i LEFT JOIN (SELECT id, itinerary_id, image_path FROM Photos p GROUP BY itinerary_id) a ON i.id = a.itinerary_id AND i.user_id = ?', [idResults[0].id], function(err, results) 
+            con.query('SELECT i.*, a.image_path FROM Itineraries i JOIN (SELECT id, itinerary_id, image_path FROM Photos p GROUP BY itinerary_id) a ON i.id = a.itinerary_id AND i.user_id = ?', [idResults[0].id], function(err, results) 
             {
                 if(err)
                     return res.json({success: false, message: "Error getting user itineraries"})
@@ -91,26 +91,42 @@ exports.createItinerary = (req, res) =>
 
     var itinerary = req.body.itinerary;
     var photos = req.body.photos;
+    var tags = req.body.tags;
 
     //Fail cases:
     if(itinerary.text === "")
         return res.json({success: false, message: "No text provided"})
 
-    con.query("INSERT INTO Itineraries SET ? ", [itinerary],  function(err, results)
+    con.query("CALL insertTags(?, ?, ?, ?)", [tags.length, (tags[0]) ? tags[0] : "", (tags[1]) ? tags[1] : "", (tags[2]) ? tags[2] : ""], function(err, tagResults) 
     {
         if(err)
-            return res.json({success: false, message: "Error creating itinerary"})
+            return res.json({success: false, message: "Error creating trip"});
 
-        var itineraryID = results.insertId;
-        var photoList = [];
-        for(var i = 0; i < photos.length; i++)
-            photoList.push([itineraryID, photos[i].title, photos[i].caption, photos[i].image_path])
+        var tagIDList = [tagResults[0][0].tag1_id, tagResults[0][0].tag2_id, tagResults[0][0].tag3_id];
 
-        con.query("INSERT INTO Photos (itinerary_id, title, caption, image_path) VALUES ?", [photoList], function(err, tripResults) {
+        if(tagIDList[0] !== null)
+            trip.tag1_id = tagIDList[0];
+        if(tagIDList[1] !== null)
+            trip.tag2_id = tagIDList[1];
+        if(tagIDList[2] !== null)
+            trip.tag3_id = tagIDList[2];
+
+        con.query("INSERT INTO Itineraries SET ? ", [itinerary],  function(err, results)
+        {
             if(err)
-                return res.json({success: false, message: "Error uploading photos to database"})
+                return res.json({success: false, message: "Error creating itinerary"})
 
-            return res.json({success: true, message: "Successful creation of itinerary"})
+            var itineraryID = results.insertId;
+            var photoList = [];
+            for(var i = 0; i < photos.length; i++)
+                photoList.push([itineraryID, photos[i].title, photos[i].caption, photos[i].image_path])
+
+            con.query("INSERT INTO Photos (itinerary_id, title, caption, image_path) VALUES ?", [photoList], function(err, photoResults) {
+                if(err)
+                    return res.json({success: false, message: "Error uploading photos to database"})
+
+                return res.json({success: true, message: "Successful creation of itinerary"})
+            })
         })
     })
     con.commit();

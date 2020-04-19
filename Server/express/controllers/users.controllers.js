@@ -105,8 +105,8 @@ exports.login = function(req,res) {
         console.log(con);
         con.query('SELECT * FROM Users WHERE username = ?', [username], function(error, results, fields) 
         {
-            console.log(results);
-            console.log(password); 
+            //console.log(results);
+            //console.log(password); 
 
             if(results.length === 0)
                 return res.json({success: false, message: "Incorrect username or password"})

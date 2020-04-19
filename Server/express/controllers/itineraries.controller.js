@@ -96,26 +96,27 @@ exports.createItinerary = (req, res) =>
         created_at: new Date(),
         country: req.body.country,
         city: req.body.city,
+        latitude: req.body.latitude,
+        longitude: req.body.longitude,
         region: req.body.region,
     }
 
-    if(req.body.start_date)
-        itinerary.start_date = req.body.start_date;
-    if(req.body.end_date)
-        itinerary.end_date = req.body.end_date;
+    var photos = req.body.images;
+
+    console.log(photos)
 
 
     //Fail cases:
     if(text === "")
         return res.json({success: false, message: "No text provided"})
 
-    con.query("INSERT INTO Itineraries SET ? ", [itinerary],  function(err)
+    /*con.query("INSERT INTO Itineraries SET ? ", [itinerary],  function(err)
     {
         if(err)
             return res.json({success: false, message: "Error creating itinerary"})
 
         return res.json({success: true, message: "Successful creation of itinerary"})
-    })
+    })*/
 
     con.commit();
 }

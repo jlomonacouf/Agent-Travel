@@ -53,6 +53,30 @@ exports.getTripByID = (req, res) =>
     })
 }
 
+function insertLocations(locations) {
+    return new Promise ((finalResolve) => {
+        var promises = [];
+        locations.forEach(location => {
+            promises.push( 
+                new Promise((resolve) => {
+                    con.query("CALL insertLocation(?, ?, ?, ?, ?)", [location.address, location.city, location.country, location.longitude, location.latitude], function(err, results) 
+                    {
+                        if(err)
+                            resolve(false);
+                        else
+                            resolve(results[0][0].location_id);
+                    })
+                })
+            )
+        });
+
+        Promise.all(promises).then((locationIDList) => {
+            finalResolve(locationIDList);
+            return;
+        })
+    })
+}
+
 exports.createTrip = (req, res) =>
 {
     if(req.session.loggedin === false || req.session.loggedin === undefined)
@@ -61,21 +85,53 @@ exports.createTrip = (req, res) =>
     var trip = {
         user_id: req.session.userid,
         name: req.body.name,
-        created_at: new Date(),
+        start_date: req.body.dates[0].startDate,
+        end_date: req.body.dates[req.body.dates.length-1].endDate,
+        image_path: (req.body.image_path) ? req.body.image_path : "default path", 
+        created_at: new Date()
     }
-    
-    if(req.body.start_date)
-        trip.start_date = req.body.start_date;
-    if(req.body.end_date)
-        trip.end_date = req.body.end_date;
 
+    var tags = req.body.tags;
+    var locations = req.body.locations;
+    var dates = req.body.dates;
 
-    con.query("INSERT INTO Trips SET ? ", [trip],  function(err)
+    con.query("CALL insertTags(?, ?, ?, ?)", [tags.length, (tags[0]) ? tags[0] : "", (tags[1]) ? tags[1] : "", (tags[2]) ? tags[2] : ""], function(err, tagResults) 
     {
         if(err)
-            return res.json({success: false, message: "Error creating trip"})
+            return res.json({success: false, message: "Error creating trip"});
 
-        return res.json({success: true, message: "Successful creation of trip"})
+        var tagIDList = [tagResults[0][0].tag1_id, tagResults[0][0].tag2_id, tagResults[0][0].tag3_id];
+
+        if(tagIDList[0] !== null)
+            trip.tag1_id = tagIDList[0];
+        if(tagIDList[1] !== null)
+            trip.tag2_id = tagIDList[1];
+        if(tagIDList[2] !== null)
+            trip.tag3_id = tagIDList[2];
+
+        insertLocations(locations).then((locationIDList) => {
+            con.query("INSERT INTO Trips SET ?", [trip], function(err, tripResults) 
+            {
+                if(err)
+                    return res.json({success: false, message: err});
+                
+                var tripId = tripResults.insertId;
+
+                var tripLocationDates = [];
+
+                for(var i = 0; i < locationIDList.length; i++)
+                    tripLocationDates.push([tripId, locationIDList[i], dates[i].startDate, dates[i].endDate]);
+                
+                console.log(tripLocationDates);
+                con.query("INSERT INTO Trip_Location (trip_id, location_id, start_date, end_date) VALUES ?", [tripLocationDates], function(err, tripResults) 
+                {
+                    if(err)
+                        return res.json({success: false, message: err});
+
+                    return res.json({success: true, message: "Successfully created trip"});
+                })
+            })
+        });
     })
 
     con.commit();

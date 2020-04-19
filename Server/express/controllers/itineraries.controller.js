@@ -42,7 +42,7 @@ exports.getAllItineraries = (req, res) =>
     if(req.session.loggedin === false || req.session.loggedin === undefined)
         return res.json({success: false, message: "Not authorized"});
 
-    con.query('SELECT * FROM Itineraries i LEFT JOIN (SELECT id, itinerary_id, image_path FROM Photos p GROUP BY itinerary_id) a ON i.id = a.itinerary_id;', function(err, results) 
+    con.query('SELECT i.*, a.image_path FROM Itineraries i LEFT JOIN (SELECT id, itinerary_id, image_path FROM Photos p GROUP BY itinerary_id) a ON i.id = a.itinerary_id;', function(err, results) 
     {
         if(err)
             return res.json({success: false, message: "Error getting user itineraries"})
@@ -70,10 +70,9 @@ exports.getItineraryByID = (req, res) =>
                     return res.json({success: false, message: "Error getting user itineraries"})
                 
                 itinerary.images = [];
-                console.log(imageResults)
+
                 imageResults.forEach(image => {
                     itinerary.images.push({title: image.title, caption: image.caption, image_path: image.image_path})
-                    console.log(itinerary)
                 });
 
                 return res.json({success: true, itinerary});
@@ -90,6 +89,8 @@ exports.createItinerary = (req, res) =>
         return res.json({success: false, message: "Not authorized"});
 
     var itinerary = req.body.itinerary;
+    itinerary.user_id = req.session.userid;
+    itinerary.created_at = new Date();
     var photos = req.body.photos;
     var tags = req.body.tags;
 
@@ -97,39 +98,58 @@ exports.createItinerary = (req, res) =>
     if(itinerary.text === "")
         return res.json({success: false, message: "No text provided"})
 
-    con.query("CALL insertTags(?, ?, ?, ?)", [tags.length, (tags[0]) ? tags[0] : "", (tags[1]) ? tags[1] : "", (tags[2]) ? tags[2] : ""], function(err, tagResults) 
+    con.beginTransaction(function(err) 
     {
-        if(err)
-            return res.json({success: false, message: "Error creating trip"});
-
-        var tagIDList = [tagResults[0][0].tag1_id, tagResults[0][0].tag2_id, tagResults[0][0].tag3_id];
-
-        if(tagIDList[0] !== null)
-            trip.tag1_id = tagIDList[0];
-        if(tagIDList[1] !== null)
-            trip.tag2_id = tagIDList[1];
-        if(tagIDList[2] !== null)
-            trip.tag3_id = tagIDList[2];
-
-        con.query("INSERT INTO Itineraries SET ? ", [itinerary],  function(err, results)
+        con.query("CALL insertTags(?, ?, ?, ?)", [tags.length, (tags[0]) ? tags[0] : "", (tags[1]) ? tags[1] : "", (tags[2]) ? tags[2] : ""], function(err, tagResults) 
         {
-            if(err)
-                return res.json({success: false, message: "Error creating itinerary"})
+            if(err) {
+                con.rollback();
+                return res.json({success: false, message: "Error creating itinerary"});
+            }
 
-            var itineraryID = results.insertId;
-            var photoList = [];
-            for(var i = 0; i < photos.length; i++)
-                photoList.push([itineraryID, photos[i].title, photos[i].caption, photos[i].image_path])
+            var tagIDList = [tagResults[0][0].tag1_id, tagResults[0][0].tag2_id, tagResults[0][0].tag3_id];
 
-            con.query("INSERT INTO Photos (itinerary_id, title, caption, image_path) VALUES ?", [photoList], function(err, photoResults) {
-                if(err)
-                    return res.json({success: false, message: "Error uploading photos to database"})
+            con.query("INSERT INTO Itineraries SET ? ", [itinerary],  function(err, results)
+            {
+                if(err) {
+                    con.rollback();
+                    return res.json({success: false, message: "Error creating itinerary"});
+                }
 
-                return res.json({success: true, message: "Successful creation of itinerary"})
+                var itineraryID = results.insertId;
+                var photoList = [];
+
+                for(var i = 0; i < photos.length; i++)
+                    photoList.push([itineraryID, photos[i].title, photos[i].caption, photos[i].image_path])
+
+                con.query("INSERT INTO Photos (itinerary_id, title, caption, image_path) VALUES ?", [photoList], function(err, photoResults) {
+                    if(err && photos.length > 0) {
+                        con.rollback();
+                        return res.json({success: false, message: "Error uploading photos to database"});
+                    }
+                    
+                    var itineraryTag = [];
+
+                    if(tagIDList[0] !== null)
+                        itineraryTag.push([itineraryID, tagIDList[0]]);
+                    if(tagIDList[1] !== null)
+                        itineraryTag.push([itineraryID, tagIDList[1]]);
+                    if(tagIDList[2] !== null)
+                        itineraryTag.push([itineraryID, tagIDList[2]]);
+
+                    con.query("INSERT INTO Itinerary_Hashtag (itinerary_id, hashtag_id) VALUES ?", [itineraryTag], function(err, itineraryTagResults) {
+                        if(err && tags.length > 0) {
+                            con.rollback();
+                            return res.json({success: false, message: "Error uploading tags"});
+                        }
+
+                        con.commit();
+                        return res.json({success: true, message: "Successful creation of itinerary"})
+                    })
+                })
             })
         })
     })
-    con.commit();
 }
 
 exports.deleteItinerary = (req, res) =>

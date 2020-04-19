@@ -29,7 +29,7 @@ exports.uploadProfilePhoto = function (req, res)
     //if(req.session.loggedin === false || req.session.loggedin === undefined)
     //    return res.json({success: false, message: "Not authorized"});
 
-    S3Upload.generateUploadURL(req.session.username).then((data) => {
+    S3Upload.generateUploadURL(req.session.username, req.body.subdirectory).then((data) => {
         res.json({success: true, data: data})
     })
 }
@@ -105,8 +105,6 @@ exports.login = function(req,res) {
         console.log(con);
         con.query('SELECT * FROM Users WHERE username = ?', [username], function(error, results, fields) 
         {
-            //console.log(results);
-            //console.log(password); 
 
             if(results.length === 0)
                 return res.json({success: false, message: "Incorrect username or password"})
@@ -117,15 +115,6 @@ exports.login = function(req,res) {
 				req.session.loggedin = true;
                 req.session.username = username;
                 req.session.userid = results[0].id;
-
-                
-                /*jwt.sign(username, config.secretKey, {
-                    algorithm: config.algorithm,
-                    expiresIn: '8h'
-                },(err, token)=>{
-                    if(err) {console.log(err)}
-                    return res.json({success: true, message: "Successful login", jwtoken: token})
-                });*/
 
                return res.json({success: true, message: "Successful login"})
             } 

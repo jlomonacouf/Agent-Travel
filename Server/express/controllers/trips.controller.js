@@ -16,7 +16,7 @@ exports.getUserTrips = (req, res) =>
             {
                 if(err)
                     return res.json({success: false, message: "Error getting user trips"})
-                
+  
                 return res.json({success: true, results});
             })
         }

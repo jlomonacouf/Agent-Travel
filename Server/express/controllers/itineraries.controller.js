@@ -12,7 +12,7 @@ exports.getUserItineraries = (req, res) =>
         
         if(idResults.length !== 0)
         {
-            con.query('SELECT * FROM Itineraries WHERE user_id = ?', [idResults[0].id], function(err, results) 
+            con.query('SELECT * FROM Itineraries i LEFT JOIN (SELECT id, itinerary_id, image_path FROM Photos p GROUP BY itinerary_id) a ON i.id = a.itinerary_id AND i.user_id = ?', [idResults[0].id], function(err, results) 
             {
                 if(err)
                     return res.json({success: false, message: "Error getting user itineraries"})
@@ -89,35 +89,30 @@ exports.createItinerary = (req, res) =>
     if(req.session.loggedin === false || req.session.loggedin === undefined)
         return res.json({success: false, message: "Not authorized"});
 
-    var itinerary = {
-        user_id: req.session.userid,
-        name: req.body.name,
-        text: req.body.text,
-        created_at: new Date(),
-        country: req.body.country,
-        city: req.body.city,
-        latitude: req.body.latitude,
-        longitude: req.body.longitude,
-        region: req.body.region,
-    }
-
-    var photos = req.body.images;
-
-    console.log(photos)
-
+    var itinerary = req.body.itinerary;
+    var photos = req.body.photos;
 
     //Fail cases:
-    if(text === "")
+    if(itinerary.text === "")
         return res.json({success: false, message: "No text provided"})
 
-    /*con.query("INSERT INTO Itineraries SET ? ", [itinerary],  function(err)
+    con.query("INSERT INTO Itineraries SET ? ", [itinerary],  function(err, results)
     {
         if(err)
             return res.json({success: false, message: "Error creating itinerary"})
 
-        return res.json({success: true, message: "Successful creation of itinerary"})
-    })*/
+        var itineraryID = results.insertId;
+        var photoList = [];
+        for(var i = 0; i < photos.length; i++)
+            photoList.push([itineraryID, photos[i].title, photos[i].caption, photos[i].image_path])
 
+        con.query("INSERT INTO Photos (itinerary_id, title, caption, image_path) VALUES ?", [photoList], function(err, tripResults) {
+            if(err)
+                return res.json({success: false, message: "Error uploading photos to database"})
+
+            return res.json({success: true, message: "Successful creation of itinerary"})
+        })
+    })
     con.commit();
 }
 

@@ -34,6 +34,7 @@ first_name - string (optional)
 last_name - string (optional)
 phone_number - string (optional)
 public - 1 or 0 (optional)
+avatar_path - string (optional)
 */
 
 router.get('/get/:username', user.getUser); 

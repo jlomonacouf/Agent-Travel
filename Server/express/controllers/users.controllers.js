@@ -581,7 +581,7 @@ exports.getFollowing = (req, res) => {
     canGetUserInformation(req, username).then((canGet) => {
         if(canGet)
         {
-            con.query('SELECT username FROM Users WHERE id in (SELECT user2_id FROM (SELECT id FROM Users WHERE username = ?) a JOIN Followers on a.id = Followers.user1_id);', [username], function(error, results, fields) 
+            con.query('SELECT username, first_name, last_name, avatar_path FROM Users WHERE id in (SELECT user2_id FROM (SELECT id FROM Users WHERE username = ?) a JOIN Followers on a.id = Followers.user1_id);', [username], function(error, results, fields) 
             {
                 if(error)
                     return res.json({success: false, message: "Could not retrieve users being followed"});
@@ -603,7 +603,7 @@ exports.getFollowers = (req, res) => {
     canGetUserInformation(req, username).then((canGet) => {
         if(canGet)
         {
-            con.query('SELECT username FROM Users WHERE id in (SELECT user1_id FROM (SELECT id FROM Users WHERE username = ?) a JOIN Followers on a.id = Followers.user2_id);', [username], function(error, results, fields) 
+            con.query('SELECT username, first_name, last_name, avatar_path FROM Users WHERE id in (SELECT user1_id FROM (SELECT id FROM Users WHERE username = ?) a JOIN Followers on a.id = Followers.user2_id);', [username], function(error, results, fields) 
             {
                 if(error)
                     return res.json({success: false, message: "Could not retrieve user followers"});

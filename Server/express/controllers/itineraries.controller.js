@@ -42,7 +42,7 @@ exports.getAllItineraries = (req, res) =>
     if(req.session.loggedin === false || req.session.loggedin === undefined)
         return res.json({success: false, message: "Not authorized"});
 
-    con.query('SELECT i.*, a.image_path FROM Itineraries i LEFT JOIN (SELECT id, itinerary_id, image_path FROM Photos p GROUP BY itinerary_id) a ON i.id = a.itinerary_id;', function(err, results) 
+    con.query('SELECT i.*, a.image_path FROM Itineraries i LEFT JOIN (SELECT id, itinerary_id, image_path FROM Photos p GROUP BY itinerary_id) a ON i.id = a.itinerary_id ORDER BY i.likes DESC;', function(err, results) 
     {
         if(err)
             return res.json({success: false, message: "Error getting user itineraries"})
@@ -57,7 +57,7 @@ exports.getItineraryByID = (req, res) =>
     if(req.session.loggedin === false || req.session.loggedin === undefined)
         return res.json({success: false, message: "Not authorized"});
 
-    con.query('SELECT * FROM AgentTravel.Itineraries i JOIN (SELECT username, id AS uid FROM AgentTravel.Users) u ON u.uid = i.user_id JOIN (SELECT GROUP_CONCAT(hashtag) as "hashtags" FROM AgentTravel.Hashtag h JOIN AgentTravel.Itinerary_Hashtag ih ON h.id = ih.hashtag_id WHERE ih.itinerary_id = ?) b WHERE i.id = ?', [req.params.id, req.params.id], function(err, results) 
+    con.query('SELECT *, CASE WHEN (SELECT id From AgentTravel.Likes_Itineraries WHERE itinerary_id = i.id AND user_id = ?) IS NOT NULL THEN 1 ELSE 0 END AS is_liked FROM AgentTravel.Itineraries i JOIN (SELECT username, id AS uid FROM AgentTravel.Users) u ON u.uid = i.user_id JOIN (SELECT GROUP_CONCAT(hashtag) as "hashtags" FROM AgentTravel.Hashtag h JOIN AgentTravel.Itinerary_Hashtag ih ON h.id = ih.hashtag_id WHERE ih.itinerary_id = ?) b WHERE i.id = ?', [req.session.userid, req.params.id, req.params.id], function(err, results) 
     {
         if(err)
             return res.json({success: false, message: "Error getting user itineraries"})

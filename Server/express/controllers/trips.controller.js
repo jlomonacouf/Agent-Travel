@@ -120,6 +120,78 @@ exports.addItinerary = (req, res) => {
     });
 }
 
+function rankByLocation(trip) {
+    var tagCount = 0;
+
+    if(trip.tag1_id !== null)
+        tagCount = 1;
+    if(trip.tag2_id !== null)
+        tagCount = 2;
+    if(trip.tag3_id !== null)
+        tagCount = 3;
+    //console.log(trip.locations)
+    return new Promise ((finalResolve) => {
+        var promises = [];
+        trip.locations.forEach(location => {
+            console.log(location.city, location.country, tagCount, trip.tag1_id, trip.tag2_id, trip.tag3_id)
+            promises.push( 
+                new Promise((resolve) => {
+                    con.query("CALL calculateRank(?, ?, ?, ?, ?, ?, @_RANK)", [location.city, location.country, tagCount, trip.tag1_id, trip.tag2_id, trip.tag3_id], function(err, results) 
+                    {
+                        if(err) {
+                            console.log(err)
+                            resolve(false);
+                        }
+                        else
+                            resolve(results);
+                    })
+                })
+            )
+        });
+
+        Promise.all(promises).then((results) => {
+            var formattedResults = [];
+
+            for(var i = 0; i < results.length; i++) {
+                formattedResults.push({location: trip.locations[i].address, itineraries: results[i][0]})
+            }
+
+            finalResolve(formattedResults);
+            return;
+        })
+    })
+}
+
+exports.recommendPlans = (req, res) => 
+{
+    if(req.session.loggedin === false || req.session.loggedin === undefined)
+        return res.json({success: false, message: "Not authorized"});
+    
+    var tripId = req.params.id;
+
+    con.query('SELECT * FROM Trips WHERE id = ?', [tripId], function(err, results) 
+    {
+        if(err)
+            return res.json({success: false, message: "Error retrieving trip data"})
+        if(results.length !== 0) {
+            con.query('SELECT l.*, t.start_date, t.end_date FROM AgentTravel.Trip_Location t JOIN AgentTravel.Location l ON t.location_id = l.id WHERE t.trip_id = ? ORDER BY t.start_date ASC', [tripId], function(err, locationResults) {
+                if(err)
+                    return res.json({success: false, message: "Error retrieving trip data"})
+
+                results[0].locations = locationResults;
+                rankByLocation(results[0]).then((rankedItineraries) => {
+                    return res.json({success: true, rankedItineraries});
+                }).catch((error) => {
+                    return res.json({success: false, message: "Error retrieving plans"})
+                });
+            })
+        }
+        else {
+            return res.json({success: false, message: "Trip does not exist"})
+        }
+    })
+}
+
 exports.createTrip = (req, res) =>
 {
     if(req.session.loggedin === false || req.session.loggedin === undefined)
@@ -171,7 +243,7 @@ exports.createTrip = (req, res) =>
                     if(err)
                         return res.json({success: false, message: err});
 
-                    return res.json({success: true, message: "Successfully created trip"});
+                    return res.json({success: true, id: tripId});
                 })
             })
         });

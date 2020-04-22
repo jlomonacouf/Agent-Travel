@@ -12,6 +12,8 @@ router.get('/get-all-trips', trip.getAllTrips);
 router.get('/get-by-id/:id', trip.getTripByID); 
 /* No parameters - Returns all trips in the database */
 
+router.get('/recommend-plans/:id', trip.recommendPlans)
+
 router.post('/create-trip', trip.createTrip)
 /* 
 Parameters

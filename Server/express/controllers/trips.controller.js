@@ -61,7 +61,7 @@ function insertLocations(locations) {
         locations.forEach(location => {
             promises.push( 
                 new Promise((resolve) => {
-                    con.query("CALL insertLocation(?, ?, ?, ?, ?)", [location.address, location.city, location.country, location.longitude, location.latitude], function(err, results) 
+                    con.query("CALL insertLocation(?, ?, ?, ?, ?)", [location.address, location.city, location.country, location.latitude, location.longitude], function(err, results) 
                     {
                         if(err)
                             resolve(false);

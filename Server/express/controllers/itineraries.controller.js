@@ -144,7 +144,7 @@ exports.createItinerary = (req, res) =>
                         }
 
                         con.commit();
-                        return res.json({success: true, message: "Successful creation of itinerary"})
+                        return res.json({success: true, id: itineraryID})
                     })
                 })
             })

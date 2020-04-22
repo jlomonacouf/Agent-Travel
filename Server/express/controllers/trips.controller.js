@@ -5,23 +5,12 @@ exports.getUserTrips = (req, res) =>
     if(req.session.loggedin === false || req.session.loggedin === undefined)
         return res.json({success: false, message: "Not authorized"});
 
-    con.query('SELECT id FROM Users WHERE username = ?', [req.params.username], function(err, idResults) 
+    con.query('SELECT * FROM AgentTravel.Trips WHERE user_id = (SELECT id FROM AgentTravel.Users WHERE username = ?) ORDER BY start_date ASC;', [req.params.username], function(err, results) 
     {
         if(err)
             return res.json({success: false, message: "Error getting user trips"})
         
-        if(idResults.length !== 0)
-        {
-            con.query('SELECT * FROM Trips WHERE user_id = ?', [idResults[0].id], function(err, results) 
-            {
-                if(err)
-                    return res.json({success: false, message: "Error getting user trips"})
-  
-                return res.json({success: true, results});
-            })
-        }
-        else
-            return res.json({success: false, message: "User not found"})
+        return res.json({success: true, results});
     })
 }
 
@@ -47,9 +36,22 @@ exports.getTripByID = (req, res) =>
     con.query('SELECT * FROM Trips WHERE id = ?', [req.params.id], function(err, results) 
     {
         if(err)
-            return res.json({success: false, message: "Error getting user trips"})
-        
-        return res.json({success: true, results});
+            return res.json({success: false, message: "Error retrieving trip data"})
+
+        con.query('SELECT l.*, t.start_date, t.end_date FROM AgentTravel.Trip_Location t JOIN AgentTravel.Location l ON t.location_id = l.id WHERE t.trip_id = ? ORDER BY t.start_date ASC', [req.params.id], function(err, locationResults) {
+            if(err)
+                return res.json({success: false, message: "Error retrieving trip data"})
+
+            con.query('SELECT * FROM AgentTravel.Trip_Itinerary t JOIN (SELECT i.id, i.name, p.image_path FROM AgentTravel.Itineraries i JOIN AgentTravel.Photos p ON  p.itinerary_id = i.id GROUP BY i.id) a ON a.id = t.itinerary_id WHERE trip_id = ?', [req.params.id], function(err, itineraryResults) {
+                if(err)
+                    return res.json({success: false, message: "Error retrieving trip data"})
+
+                results[0].location = locationResults;
+                results[0].itineraries = itineraryResults;
+
+                return res.json({success: true, results});
+            })
+        })
     })
 }
 
@@ -75,6 +77,47 @@ function insertLocations(locations) {
             return;
         })
     })
+}
+
+exports.addItinerary = (req, res) => {
+    if(req.session.loggedin === false || req.session.loggedin === undefined)
+        return res.json({success: false, message: "Not authorized"});
+
+    var tripItineraries = {
+        trip_id: req.body.trip_id,
+        locations: req.body.locations,
+        itinerary_id: req.body.itinerary_id
+    }
+
+    con.query("SELECT user_id FROM Trips WHERE id = ?", req.body.trip_id, function(err, results) //Check if user created trip and has permission to delete it
+    {
+        if(err)
+            return res.json({success: false, message: "Error adding plan to trip"});
+
+        if(results[0] && results[0].user_id === req.session.userid)
+        {
+            var tripItinaryList = [];
+            tripItineraries.locations.forEach((location, index) => {
+                tripItinaryList.push([tripItineraries.trip_id, location, tripItineraries.itinerary_id])
+            })
+
+            con.query("INSERT IGNORE INTO Trip_Itinerary (trip_id, location_id, itinerary_id) VALUES ?", [tripItinaryList], function(err) 
+            {
+                if(err) {
+                    console.log(err)
+                    return res.json({success: false, message: "Error adding plan to trip"});
+                }
+
+                con.commit();
+
+                return res.json({success: true, message: "Successfully added plan to trip"});
+            });
+        }
+        else
+        {
+            return res.json({success: false, message: "Not authorized"});
+        }
+    });
 }
 
 exports.createTrip = (req, res) =>

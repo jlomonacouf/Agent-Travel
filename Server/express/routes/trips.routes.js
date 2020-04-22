@@ -20,6 +20,14 @@ start_date - date (optional)
 end_date - date (optional)
 */
 
+router.post('/add-itinerary', trip.addItinerary)
+/*
+Parameters
+trip_id - int
+locations - int array
+itinerary_id - int
+*/
+
 router.post('/delete-trip', trip.deleteTrip)
 /* 
 Parameters
